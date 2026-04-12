@@ -12,7 +12,7 @@ import {
 import { Doughnut, Bar } from 'react-chartjs-2';
 import Swal from 'sweetalert2';
 import {
-  Home, BarChart2, Briefcase, Target, LogOut,
+  Home, Headset, BarChart2, Briefcase, Target, LogOut,
   Search, Eye, EyeOff, TrendingDown, ArrowDownCircle, ArrowUpCircle,
   Wallet, X, Trash2, Save, Paperclip, Inbox, Receipt,
   Plus, Filter, MessageCircle, Camera, CheckCircle, AlertTriangle,
@@ -125,6 +125,7 @@ export default function DashboardPage() {
   const [chartMode, setChartMode] = useState<ChartMode>('donut');
   const [masked, setMasked] = useState(true);
   const [csOpen, setCsOpen] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [realtimeConnected, setRealtimeConnected] = useState(false);
 
   // State Anggota
@@ -443,7 +444,8 @@ export default function DashboardPage() {
         </div>
         <table style="width:100%;border-collapse:collapse;margin-top:16px;">
           <thead>
-            <tr style="background:#F1F5F9;">
+            <tr style="
+            :#F1F5F9;">
               <th style="padding:8px;border:1px solid #ddd;text-align:left;font-size:11px;">Tanggal</th>
               <th style="padding:8px;border:1px solid #ddd;text-align:left;font-size:11px;">Jenis</th>
               <th style="padding:8px;border:1px solid #ddd;text-align:left;font-size:11px;">Kategori</th>
@@ -609,7 +611,8 @@ export default function DashboardPage() {
         }
 
         /* Avatar upload overlay */
-        .avatar-upload-wrap { position: relative; cursor: pointer; }
+        .avatar-upload-wrap { position: relative; cursor: pointer; width: 55px;  /* Sesuaikan ukuran yang Anda inginkan */
+          height: 55px;}
         .avatar-upload-wrap:hover .avatar-overlay { opacity: 1; }
         .avatar-overlay {
           position: absolute; inset: 0; border-radius: 50%;
@@ -619,13 +622,59 @@ export default function DashboardPage() {
         .avatar-overlay.uploading { opacity: 1; }
 
         /* Kas card anggota */
-        .kas-card-inner { position: relative; }
-        .kas-avatar-wrap { position: relative; display: inline-block; margin: 0 auto 10px; cursor: pointer; }
-        .kas-avatar-wrap:hover .kas-avatar-overlay { opacity: 1; }
-        .kas-avatar-overlay {
-          position: absolute; inset: 0; border-radius: 50%;
-          background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center;
-          opacity: 0; transition: opacity 0.2s; color: #fff;
+        /* ── FIX BINGKAI FOTO ANGGOTA KKN ── */
+        .kas-avatar-wrap {
+          width: 55px;  /* Sesuaikan ukuran yang Anda inginkan */
+          height: 55px;
+          margin: 0 auto 10px;
+          position: relative;
+          cursor: pointer;
+          border-radius: 50%; /* Membuat kontainer bulat sempurna */
+          overflow: hidden;    /* Memastikan efek hover tidak keluar jalur */
+          border: 2px solid #E2E8F0; /* Bingkai luar agar lebih rapi */
+          transition: all 0.3s ease;
+        }
+
+        .kas-avatar-wrap img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+
+        /* Efek Abu-abu saat Hover yang presisi */
+        .kas-avatar-wrap::after {
+          content: "";
+          position: absolute;
+          inset: 0; /* Menutup seluruh area foto secara presisi */
+          background-color: rgba(0, 0, 0, 0); /* Transparan awal */
+          border-radius: 50%;
+          transition: background-color 0.2s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .kas-avatar-wrap:hover::after {
+          background-color: rgba(0, 0, 0, 0.3); /* Warna abu-abu saat disentuh */
+        }
+
+        /* Opsional: Tambahkan icon kamera kecil saat di-hover agar user tahu bisa diganti */
+        .kas-avatar-wrap:hover::before {
+          content: "📸"; /* Atau gunakan icon Lucide jika memungkinkan */
+          position: absolute;
+          z-index: 2;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          font-size: 14px;
+          opacity: 1;
+        }
+        
+        .kas-avatar-wrap::before {
+          content: "";
+          opacity: 0;
+          transition: opacity 0.2s ease;
         }
         .kas-avatar-overlay.uploading { opacity: 1; }
         .kas-card-actions {
@@ -691,37 +740,86 @@ export default function DashboardPage() {
               <div className="realtime-dot" /> Live
             </div>
           )}
-          <div className="user-avatar-wrap">
-            <div className="user-info-mini" onClick={() => Swal.fire({
-              title: profile?.nama,
-              html: `<p style="color:#64748B;margin-bottom:12px;">${profile?.email}</p><span class="chip ${profile?.role === 'admin' ? 'chip-green' : profile?.role === 'bendahara' ? 'chip-amber' : 'chip-blue'}">${profile?.role?.toUpperCase()}</span>`,
-              showCancelButton: true, confirmButtonText: 'Keluar', cancelButtonText: 'Tutup', confirmButtonColor: '#F43F5E',
-            }).then(r => { if (r.isConfirmed) handleLogout(); })}>
+          
+          <div className="user-avatar-wrap" style={{ position: 'relative' }}>
+            {/* Info nama & role (bisa disembunyikan di mobile lewat CSS hide-on-mobile jika mau) */}
+            <div className="user-info-mini">
               <div className="user-name">{profile?.nama?.split(' ')[0]}</div>
               <span className={`user-role-badge role-${profile?.role}`}>{profile?.role}</span>
             </div>
 
-            {/* Avatar dengan upload */}
+            {/* Avatar - sekarang berfungsi sebagai tombol Dropdown */}
             <div
               className="avatar-upload-wrap"
-              title="Klik untuk ganti foto profil"
-              onClick={() => profileAvatarRef.current?.click()}
+              title="Buka Menu Profil"
+              onClick={() => setShowProfileMenu(!showProfileMenu)}
+              style={{ cursor: 'pointer' }}
             >
               <img
                 className="avatar-img"
                 src={profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.nama || 'U')}&background=E0F6FF&color=00AEEF`}
                 alt="avatar"
               />
-              <div className={`avatar-overlay${avatarUploading ? ' uploading' : ''}`}>
-                {avatarUploading
-                  ? <div className="spinner" style={{ width: 18, height: 18, borderWidth: 2, borderTopColor: '#fff' }} />
-                  : <Camera size={16} />
-                }
-              </div>
+              {avatarUploading && (
+                <div className="avatar-overlay uploading">
+                  <div className="spinner" style={{ width: 22, height: 8, borderWidth: 2, borderTopColor: '#fff' }} />
+                </div>
+              )}
             </div>
+
+            {/* ── DROPDOWN MENU PROFIL ── */}
+            {showProfileMenu && (
+              <>
+                {/* Overlay transparan untuk menutup menu saat klik layar luar */}
+                <div onClick={() => setShowProfileMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 1000 }} />
+                
+                <div style={{
+                  position: 'absolute', top: '50px', right: 0, width: '230px', backgroundColor: '#fff',
+                  borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.15)', padding: '16px', zIndex: 1001,
+                  border: '1px solid #E2E8F0', animation: 'fadeIn 0.2s ease-out'
+                }}>
+                  {/* Status User */}
+                  <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #E2E8F0' }}>
+                    <div style={{ fontWeight: 700, color: '#001E36', fontSize: '0.95rem', wordBreak: 'break-word' }}>
+                      {profile?.nama || 'Pengguna'}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748B', textTransform: 'uppercase', fontWeight: 600, marginTop: '4px' }}>
+                      Status: {profile?.role || 'Member'}
+                    </div>
+                  </div>
+
+                  {/* Tombol Aksi */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <button 
+                      onClick={() => { setShowProfileMenu(false); profileAvatarRef.current?.click(); }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '10px', 
+                        border: 'none', background: 'none', borderRadius: '8px', fontSize: '0.9rem', 
+                        color: '#334155', cursor: 'pointer', textAlign: 'left'
+                      }}
+                    >
+                      <Camera size={18} /> Ganti Foto Profil
+                    </button>
+                    
+                    <button 
+                      onClick={() => { setShowProfileMenu(false); handleLogout(); }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '10px', 
+                        border: 'none', background: 'rgba(244, 63, 94, 0.1)', borderRadius: '8px', 
+                        fontSize: '0.9rem', color: '#E11D48', cursor: 'pointer', fontWeight: 600, marginTop: '4px'
+                      }}
+                    >
+                      <LogOut size={18} /> Keluar
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </header>
+
+    
 
       {/* ── SIDEBAR ── */}
       <aside className="sidebar">
@@ -861,7 +959,7 @@ export default function DashboardPage() {
               <div>
                 Rekap Setoran Kas Anggota
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 400, marginTop: 4 }}>
-                  Klik avatar untuk ganti foto. Hover kartu untuk edit/hapus.
+                  buat liat kas, karena semua kas hanya milik Allah. ( direset tiap awal bulan )
                 </p>
               </div>
               {canManage && (
@@ -950,7 +1048,7 @@ export default function DashboardPage() {
                         <img className="kas-avatar" src={avatarUrl} alt={kas.nama} />
                         <div className={`kas-avatar-overlay${isUploadingThis ? ' uploading' : ''}`}>
                           {isUploadingThis
-                            ? <div className="spinner" style={{ width: 18, height: 18, borderWidth: 2, borderTopColor: '#fff' }} />
+                            ? <div className="spinner" style={{ width: 18, height: 20, borderWidth: 2, borderTopColor: '#fff' }} />
                             : <Camera size={16} />
                           }
                         </div>
@@ -1044,19 +1142,19 @@ export default function DashboardPage() {
       </nav>
 
       {/* ── CUSTOMER SERVICE ── */}
-      <div className="cs-container">
-        <button className="cs-main-btn" onClick={() => setCsOpen(o => !o)}>
-          <MessageCircle size={22} />
-        </button>
-        <div className={`cs-menu${csOpen ? ' open' : ''}`}>
-          <a href="https://wa.me/6285643312905" target="_blank" className="cs-item wa">
-            <Phone size={14} style={{ display: 'inline', marginRight: 4 }} /> WhatsApp
-          </a>
-          <a href="mailto:cyborged30s@gmail.com" className="cs-item email">
-            <Mail size={14} style={{ display: 'inline', marginRight: 4 }} /> Email
-          </a>
-        </div>
-      </div>
+            {/* ── CUSTOMER SERVICE (POINTER EVENTS FIX & REVERSE) ── */}
+            <div className="cs-container">
+              {csOpen && (
+                <div className="cs-menu-content">
+                  <a href="https://wa.me/6285643312905" target="_blank" className="cs-item"><Phone size={14}/> WhatsApp</a>
+                  <a href="mailto:cyborged30s@gmail.com" className="cs-item"><Mail size={14}/> Email</a>
+                </div>
+              )}
+              <button className="cs-main-btn" onClick={() => setCsOpen(!csOpen)}>
+                <Headset size={22} />
+              
+              </button>
+            </div>
 
       {/* ════ MODALS ════ */}
 
@@ -1260,8 +1358,8 @@ export default function DashboardPage() {
                     const tanggalStr = `${d.getDate()} ${bulan} ${d.getFullYear()}`;
                     return (
                       <>
-                        <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--blu-cyan)', letterSpacing: 1 }}>{jam}.{menit}</span>
-                        <span style={{ fontSize: '0.82rem', fontWeight: 500, color: 'var(--text-muted)' }}>{tanggalStr}</span>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: 1 }}>{jam}.{menit}</span>
+                        <span style={{ fontSize: '0.82rem', fontWeight: 500, color: 'black' }}>{tanggalStr}</span>
                       </>
                     );
                   })() : <span>{formatTanggal(detailTrx.tanggal)}</span>}

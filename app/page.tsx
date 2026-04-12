@@ -1,9 +1,17 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
-import { createClient } from '@/lib/supabase'; // Pastikan path ini sesuai
+import { createClient } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { X, Eye, EyeOff } from 'lucide-react';
+import { 
+  X, 
+  Eye, 
+  EyeOff, 
+  MessageCircle, 
+  Mail, 
+  Phone, 
+  Headset 
+} from 'lucide-react';
 
 export default function AuthPage() {
   const supabase = createClient();
@@ -13,23 +21,33 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  
-  // State untuk menu bantuan (Customer Service)
   const [csOpen, setCsOpen] = useState(false);
 
-  // Form fields
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [nama, setNama] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  // Fungsi ganti tab untuk membersihkan form dan pesan notifikasi
   const switchMode = (newMode: 'login' | 'register') => {
     setMode(newMode);
     setError('');
     setSuccess('');
-    setPassword(''); // Reset password saat ganti tab untuk privasi
+    setPassword('');
   };
+
+  async function handleGoogleLogin() {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      setError(err.message);
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -37,7 +55,6 @@ export default function AuthPage() {
     setSuccess('');
     setLoading(true);
 
-    // Validasi tambahan di sisi klien (Client-side validation)
     if (mode === 'register' && password.length < 6) {
       setError('Password harus memiliki minimal 6 karakter.');
       setLoading(false);
@@ -48,272 +65,324 @@ export default function AuthPage() {
       if (mode === 'login') {
         const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
         if (loginError) throw loginError;
-        
-        setSuccess('🎉 Berhasil masuk! Mengalihkan ke Dashboard...');
-        
-        setTimeout(() => {
-          router.push('/dashboard');
-          router.refresh();
-        }, 1500);
-
+        router.push('/dashboard');
       } else {
-        const { data, error: signUpError } = await supabase.auth.signUp({
+        const { error: regError } = await supabase.auth.signUp({
           email,
           password,
-          options: {
-            data: { full_name: nama },
-            // Mencegah error SSR dengan memastikan window tersedia
-            emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/dashboard`,
-          },
+          options: { data: { full_name: nama } },
         });
-        if (signUpError) throw signUpError;
-
-        // Cek apakah butuh konfirmasi email (fitur Supabase) atau langsung masuk
-        if (data.session) {
-          setSuccess('🚀 Akun berhasil dibuat! Langsung masuk...');
-          setTimeout(() => {
-            router.push('/dashboard');
-            router.refresh();
-          }, 1500);
-        } else {
-          setSuccess('✉️ Berhasil! Silakan cek email kamu untuk konfirmasi akun.');
-          setMode('login');
-          setPassword(''); // Kosongkan password setelah berhasil daftar
-        }
+        if (regError) throw regError;
+        setSuccess('Registrasi berhasil! Silakan cek email untuk verifikasi atau langsung login.');
+        setMode('login');
       }
-    } catch (err: unknown) {
-      // Type casting error untuk Typescript yang lebih aman (menghindari 'any')
-      const errorObj = err as { message?: string };
-      let errorMessage = errorObj.message || 'Terjadi kesalahan sistem yang tidak diketahui.';
-
-      // Translasi pesan error umum dari Supabase ke Bahasa Indonesia
-      if (errorMessage.includes('Invalid login credentials')) {
-        errorMessage = 'Email atau password yang kamu masukkan salah.';
-      } else if (errorMessage.includes('Email not confirmed')) {
-        errorMessage = 'Silakan konfirmasi email kamu terlebih dahulu. Cek kotak masuk atau folder spam.';
-      } else if (errorMessage.includes('User already registered')) {
-        errorMessage = 'Email ini sudah terdaftar. Silakan masuk atau gunakan email lain.';
-      } else if (errorMessage.includes('Password should be at least')) {
-        errorMessage = 'Password terlalu pendek. Gunakan minimal 6 karakter.';
+    } catch (err: any) {
+      // ── TANGKAP ERROR SUPABASE DAN TERJEMAHKAN ──
+      if (err.message === 'Invalid login credentials') {
+        setError('Email atau password yang Anda masukkan salah.');
+      } else if (err.message === 'User already registered') {
+        setError('Email ini sudah terdaftar. Silakan login.');
+      } else {
+        setError(err.message); // Tampilkan error bawaan jika ada masalah lain
       }
-
-      setError(errorMessage);
-    } finally {
-      // Finally memastikan loading berhenti, entah itu sukses atau error
-      setLoading(false);
-    }
-  }
-
-  async function handleGoogleLogin() {
-    setLoading(true);
-    setError('');
-    
-    try {
-      const { error: googleError } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`,
-          queryParams: { prompt: 'select_account' },
-        },
-      });
-      
-      if (googleError) throw googleError;
-    } catch (err: unknown) {
-      const errorObj = err as { message?: string };
-      setError(errorObj.message || 'Gagal masuk menggunakan Google.');
-      setLoading(false);
-    }
-  }
-
-  async function handleResetPassword() {
-    if (!email) {
-      return setError('Silakan masukkan email kamu terlebih dahulu di kolom email atas.');
-    }
-    
-    setLoading(true);
-    setError('');
-    setSuccess('');
-    
-    try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/reset-password`,
-      });
-      
-      if (resetError) throw resetError;
-      setSuccess('✅ Instruksi reset password sudah dikirim ke email kamu. Cek folder Inbox/Spam.');
-    } catch (err: unknown) {
-      const errorObj = err as { message?: string };
-      setError(errorObj.message || 'Gagal mengirim instruksi reset password.');
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="auth-page">
-      <div className="auth-bg-circle auth-bg-circle-1" />
-      <div className="auth-bg-circle auth-bg-circle-2" />
-
+    <div className="auth-wrapper">
       <div className="auth-card">
-        <div className="auth-logo">
-          <div className="wordmark"><span>Cy</span>artha.</div>
-          <div className="tagline">Manajemen Keuangan KKN</div>
-        </div>
-
-        {/* TOMBOL BANTUAN MELAYANG */}
-        <div className="cs-container-floating">
-          <div className={`cs-menu ${csOpen ? 'open' : ''}`}>
-            {/* Tambahkan rel="noopener noreferrer" pada target blank untuk keamanan */}
-            <a href="https://wa.me/6285643312905" target="_blank" rel="noopener noreferrer" className="cs-item wa">
-              WhatsApp
-            </a>
-            <a href="mailto:cyborged30s@gmail.com" className="cs-item email">
-              Email
-            </a>
+        <div className="auth-header">
+          <div className="logo" style={{ fontSize: 40, fontWeight: '800', color: '#001E36', letterSpacing: '-1.5px', marginBottom: '0px',  textAlign:'center'}}>
+            <span style={{ color: '#00AEEF' }}>Cy</span>artha.
+          </div>  
+          <div style={{ fontSize: 10, fontWeight: '400', color: '#1f5078a2', letterSpacing: '-0.5px', marginBottom: '20px', textAlign:'center' }}>
+            <span>Tempat mencatat pahala hamba-hamba Allah</span>
+          </div>  
+  
+         
           </div>
-
-          <button 
-            type="button" 
-            className="cs-main-btn" 
-            onClick={() => setCsOpen(!csOpen)}
-            aria-label="Bantuan Customer Service"
-          >
-            {csOpen ? <X size={20} /> : <span className="cs-text">Butuh bantuan?</span>}
-          </button>
-        </div>
-
-        <div className="auth-tab-row">
-          <button
-            type="button"
-            className={`auth-tab ${mode === 'login' ? 'active' : ''}`}
-            onClick={() => switchMode('login')}
-            disabled={loading} // Cegah klik ganti tab saat sedang proses loading
-          >
-            Masuk
-          </button>
-          <button
-            type="button"
-            className={`auth-tab ${mode === 'register' ? 'active' : ''}`}
-            onClick={() => switchMode('register')}
-            disabled={loading}
-          >
-            Daftar
-          </button>
-        </div>
-
-        {/* Notifikasi Alert */}
-        {error && (
-          <div style={{ backgroundColor: '#fff5f5', color: '#e53e3e', padding: '12px', borderRadius: '8px', marginBottom: '15px', fontSize: '0.85rem', border: '1px solid #fed7d7', lineHeight: '1.4' }}>
-            ⚠️ {error}
+          <div style={{ fontSize: 14, fontWeight: '400', color: '#0e3c62', letterSpacing: '0px', marginBottom: '10px'}}>
+          <p>{mode === 'login' ? 'Masuk ke akun Anda' : 'Daftar akun baru'}</p>
           </div>
-        )}
-        {success && (
-          <div style={{ backgroundColor: '#f0fff4', color: '#38a169', padding: '12px', borderRadius: '8px', marginBottom: '15px', fontSize: '0.85rem', border: '1px solid #c6f6d5', lineHeight: '1.4' }}>
-            {success}
-          </div>
-        )}
+          {error && <div className="alert alert-error">{error}</div>}
+          {success && <div className="alert alert-success">{success}</div>}
 
-        <form onSubmit={handleSubmit}>
-          {mode === 'register' && (
-            <div className="form-group">
-              <label htmlFor="nama">Nama Lengkap</label>
-              <input
-                id="nama"
-                type="text"
-                placeholder="Nama kamu..."
-                value={nama}
-                onChange={e => setNama(e.target.value)}
-                required
-                autoComplete="name"
-                disabled={loading} // Disable input saat loading
+          <form onSubmit={handleSubmit} className="auth-form">
+            {mode === 'register' && (
+              <div className="form-group">
+                <label>Nama Lengkap</label>
+                <input 
+                type="text" 
+                value={nama} 
+                onChange={(e) => setNama(e.target.value)} 
+                placeholder="Masukkan nama lengkap"
+                required 
               />
             </div>
           )}
 
           <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              placeholder="email@contoh.com"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-              disabled={loading}
+            <label>Email</label>
+            <input 
+              type="email" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              placeholder="nama@email.com"
+              required 
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <div style={{ position: 'relative' }}>
-              <input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
+            <label>Password</label>
+            <div className="password-input-wrapper">
+              <input 
+                type={showPassword ? 'text' : 'password'} 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
                 placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={mode === 'register' ? 6 : undefined} // HTML5 Validation
-                style={{ width: '100%', paddingRight: '45px' }}
-                disabled={loading}
+                required 
               />
               <button 
-                type="button"
+                type="button" 
+                className="toggle-password"
                 onClick={() => setShowPassword(!showPassword)}
-                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
-                aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
-                disabled={loading}
               >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
           </div>
 
-          {mode === 'login' && (
-            <div style={{ textAlign: 'right', marginTop: '-10px', marginBottom: '15px' }}>
-              <button 
-                type="button" 
-                onClick={handleResetPassword} 
-                style={{ fontSize: '0.8rem', color: '#00bcd4', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
-                disabled={loading}
-              >
-                Lupa Password?
-              </button>
-            </div>
-          )}
-
-          <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: '100%' }}>
-            {loading ? 'Memproses...' : (mode === 'login' ? 'Masuk ke Cyartha' : 'Buat Akun')}
+          <button type="submit" className="btn-primary" disabled={loading}>
+            {loading ? 'Memproses...' : mode === 'login' ? 'Masuk Sekarang' : 'Daftar Sekarang'}
           </button>
-        </form>
+         </form>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0', color: '#94a3b8', fontSize: '0.8rem' }}>
-          <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
-          atau
-          <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
-        </div>
+          <div className="divider">
+            <span>atau</span>
+          </div>
 
-        <button
-          type="button"
-          className="btn btn-navy"
-          onClick={handleGoogleLogin}
-          disabled={loading}
-          style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10 }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24">
-            <path fill="#EA4335" d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115z"/>
-            <path fill="#34A853" d="M16.04 18.013c-1.09.703-2.474 1.078-4.04 1.078a7.077 7.077 0 0 1-6.723-4.823l-4.04 3.067A11.965 11.965 0 0 0 12 24c2.933 0 5.735-1.043 7.834-3l-3.793-2.987z"/>
-            <path fill="#4A90E2" d="M19.834 21c2.195-2.048 3.62-5.096 3.62-9 0-.71-.109-1.473-.272-2.182H12v4.637h6.436c-.317 1.559-1.17 2.766-2.395 3.558L19.834 21z"/>
-            <path fill="#FBBC05" d="M5.277 14.268A7.12 7.12 0 0 1 4.909 12c0-.782.125-1.533.357-2.235L1.24 6.65A11.934 11.934 0 0 0 0 12c0 1.92.445 3.73 1.237 5.335l4.04-3.067z"/>
+        <button onClick={handleGoogleLogin} className="btn-google">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path fill="#ea4335" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#fbbc05" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#34a853" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+            <path fill="#4285f4" d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
           </svg>
           Masuk dengan Google
         </button>
 
-        <p style={{ textAlign: 'center', fontSize: '0.75rem', color: '#94a3b8', marginTop: 25 }}>
-          Aplikasi ini digunakan untuk mencatat pahala hamba-hamba Allah.
+        <p className="auth-footer">
+          {mode === 'login' ? 'Belum punya akun?' : 'Sudah punya akun?'}
+          <button onClick={() => switchMode(mode === 'login' ? 'register' : 'login')}>
+            {mode === 'login' ? 'Daftar di sini' : 'Login di sini'}
+          </button>
         </p>
       </div>
+
+      {/* FLOATING CUSTOMER SERVICE */}
+      <div className="cs-container-floating">
+        {csOpen && (
+          <div className="cs-menu-content">
+            <a href="https://wa.me/628123456789" target="_blank" rel="noopener noreferrer" className="cs-item">
+              <Phone size={18} /> <span>WhatsApp</span>
+            </a>
+            <a href="mailto:support@cyartha.com" className="cs-item">
+              <Mail size={18} /> <span>Email Support</span>
+            </a>
+          </div>
+        )}
+        <button className="cs-main-btn" onClick={() => setCsOpen(!csOpen)}>
+          <span className="cs-text">Paramex</span>
+        </button>
+      </div>
+
+      <style jsx>{`
+        .auth-wrapper {
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          /* ── EFEK BACKGROUND GRADIENT CIRCLE ── */
+          background-color: #03101b;
+          background-image: radial-gradient(circle at 50% 0%, #595e63 0%, #001E36 75%);
+          padding: 20px;
+          font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        .auth-card {
+          width: 100%;
+          max-width: 400px;
+          background: white;
+          padding: 40px;
+          border-radius: 20px;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .auth-header p { 
+          color: #64748b; 
+          margin-bottom: 30px; 
+          font-weight: 500;
+        }
+        
+        .form-group { margin-bottom: 20px; text-align: left; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 700; color: #1e293b; font-size: 0.9rem; }
+        
+        input {
+          width: 100%;
+          padding: 12px 16px;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          font-size: 1rem;
+          transition: all 0.2s;
+        }
+
+        input:focus {
+          outline: none;
+          border-color: #00AEEF;
+          box-shadow: 0 0 0 3px rgba(0, 174, 239, 0.1);
+        }
+
+        .password-input-wrapper { position: relative; }
+        .toggle-password {
+          position: absolute;
+          right: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          background: none; border: none; color: #94a3b8;
+          cursor: pointer;
+        }
+
+        .btn-primary {
+          width: 100%;
+          padding: 14px;
+          background: #001E36;
+          color: white;
+          border: none;
+          border-radius: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          margin-top: 10px;
+          transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+          background-color: #002d52;
+          transform: translateY(-2px);
+          box-shadow: 0 5px 15px rgba(0, 30, 54, 0.2);
+        }
+
+        .divider {
+          margin: 20px 0;
+          display: flex;
+          align-items: center;
+          color: #94a3b8;
+          font-size: 0.85rem;
+        }
+
+        .divider::before, .divider::after {
+          content: ""; flex: 1; height: 1px; background: #e2e8f0; margin: 0 10px;
+        }
+
+        .btn-google {
+          width: 100%;
+          padding: 12px;
+          background: #001e36;
+          color: #f7f9fa;
+          border: 1px solid #E2E8F0;
+          border-radius: 12px;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+
+        .btn-google:hover {
+          background: #1a2d3f;
+        }
+
+        /* FLOATING CS STYLES */
+        .cs-container-floating {
+          position: fixed;
+          bottom: 24px;
+          right: 20px;
+          display: flex;
+          flex-direction: column; /* Menu muncul ke atas */
+          align-items: flex-end;
+          gap: 12px;
+          z-index: 9999;
+          pointer-events: none;
+        }
+
+        .cs-main-btn, .cs-menu-content {
+          pointer-events: auto;
+          flex-direction: column-reverse; 
+        }
+
+        .cs-main-btn {
+          background: #00AEEF; /* Warna Cyan agar cocok dengan tema baru */
+          color: #001E36;
+          border: none;
+          padding: 12px 24px;
+          border-radius: 50px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+
+        .cs-main-btn:hover { 
+          transform: translateY(-3px) scale(1.02);
+          box-shadow: 0 8px 25px rgba(0, 174, 239, 0.4);
+        }
+
+        .cs-text { font-weight: 800; font-size: 0.9rem; }
+
+        .cs-menu-content {
+          background: #1e293b;
+          border-radius: 12px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+          padding: 8px 0;
+          display: flex;
+          flex-direction: column;
+          min-width: 160px;
+          animation: slideUp 0.2s ease;
+        }
+
+        .cs-item {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px 20px;
+          color: #f8fafc;
+          text-decoration: none;
+          font-size: 0.9rem;
+          font-weight: 500;
+          transition: background 0.2s;
+        }
+
+        .cs-item:hover { background: rgba(255, 255, 255, 0.05); }
+
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .auth-footer { margin-top: 25px; font-size: 0.9rem; color: #64748b; text-align:center; }
+        .auth-footer button {
+          background: none; border: none; color: #001E36; font-weight: 700; margin-left: 5px; cursor: pointer;
+        }
+
+        .alert { padding: 12px; border-radius: 10px; margin-bottom: 20px; font-size: 0.85rem; font-weight: 600; }
+        .alert-error { background: #fee2e2; color: #b91c1c; }
+        .alert-success { background: #dcfce7; color: #15803d; }
+      `}</style>
     </div>
   );
 }

@@ -91,7 +91,7 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-.auth-logo {
+.auth-locd {
   text-align: center;
   margin-bottom: 32px;
 }
@@ -282,6 +282,95 @@ body {
   flex-shrink: 0;
   width: 40px;
 }
+
+
+.google-btn {
+  width: 100%;
+  min-height: 50px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border-radius: 12px; /* Samakan dengan border-radius input form kamu */
+  border: 1px solid #E2E8F0;
+  background: var(--blu-navy, #001E36); /* Ganti warna background agar sama dengan login biasa */
+  color: #ffffff; /* Warna teks */
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: all 0.2s ease;
+}
+
+/* Sesuaikan ukuran icon Google agar warnanya tidak tabrakan jika butuh di-invert, 
+   atau biarkan original-nya karena icon google sudah memiliki warnanya sendiri */
+/* Sembunyikan header mobile saat di desktop (layar besar) */
+.top-header-mobile {
+  display: none; 
+}
+
+/* Tampilkan khusus di Mobile */
+@media (max-width: 768px) {
+  .top-header-mobile {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #ffffff;
+    border-bottom: 1px solid #E2E8F0;
+    margin-bottom: 16px;
+    border-radius: 12px;
+  }
+  
+  .user-profile-mobile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .mobile-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid #E2E8F0;
+  }
+
+  .mobile-user-info {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mobile-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--blu-navy, #001E36);
+  }
+
+  .mobile-role {
+    font-size: 0.75rem;
+    color: #64748b;
+    text-transform: capitalize;
+  }
+
+  .mobile-logout-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    color: #F43F5E; /* Warna merah indikator keluar */
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: rgba(244, 63, 94, 0.1); /* Efek background transparan merah */
+  }
+}
+
+
+
 
 /* ─── LAYOUT DASHBOARD ──────────────────────────────────────── */
 .top-header {
@@ -981,31 +1070,73 @@ body {
 
 /* ─── CS BUTTON ─────────────────────────────────────────────── */
 /* Container melayang di pojok layar */
-.cs-container-floating {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end; /* Menu akan rata kanan */
-  z-index: 999;
-}
+/* Pastikan container CS tetap floating di atas segalanya */
+/* Container utama harus transparan terhadap klik */
+/* ==== TOMBOL CS (PERBAIKAN POSISI DESKTOP & MOBILE) ==== */
+       /* ==== POSISI TOMBOL CS (POJOK KANAN BAWAH) ==== */
+        .cs-container {
+          position: fixed !important;
+          bottom: 85px !important; 
+          right: 20px !important;
+          z-index: 99999 !important;
+          display: flex; 
+          flex-direction: column-reverse; 
+          align-items: flex-end; 
+          gap: 12px;
+          pointer-events: none;
+        }
 
-.cs-main-btn {
-  width: fit-content;
-  padding: 12px 20px;
-  background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%);
-  color: white;
-  border: none;
-  border-radius: 50px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 4px 15px rgba(0, 151, 167, 0.4);
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
+        /* Penyesuaian khusus untuk Laptop/Desktop */
+        @media (min-width: 769px) {
+          .cs-container {
+            bottom: 25px !important; /* Di laptop diturunkan karena tidak ada menu navigasi di bawah */
+            right: 30px !important;
+          }
+        }
+        .cs-main-btn, 
+        .cs-menu, 
+        .cs-item {
+          pointer-events: auto !important; 
+          cursor: pointer;
+        }
+/* Tombol dan menu di dalamnya harus bisa diklik kembali */
+        .cs-main-btn {
+          pointer-events: auto;
+          background-color: #1a4074; /* Warna background tombol */
+          color: #81a0b9; /* Warna teks & icon */
+          padding: 12px 24px; /* Memberi ruang agar bentuknya lonjong */
+          border-radius: 50px; /* Membuat ujungnya bulat sempurna */
+          border: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); /* Efek bayangan mengambang */
+          cursor: pointer;
+          transition: all 0.3s ease; /* Transisi halus saat di-hover */
+        }
 
+        .cs-menu-content{
+          pointer-events: auto;
+          background-color: #6299afe2; /* Warna background tombol */
+          color: #449126; /* Warna teks & icon */
+          padding: 12px 24px; /* Memberi ruang agar bentuknya lonjong */
+          border-radius: 50px; /* Membuat ujungnya bulat sempurna */
+          border: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); /* Efek bayangan mengambang */
+          cursor: pointer;
+          transition: all
+        }
+/* Pastikan saat menu hidden (jika menggunakan class), kontennya benar-benar hilang */
+.cs-menu-content.hidden {
+  display: none;
+  opacity: 0;
+  transform: translateY(10px);
+}
 .cs-main-btn:hover {
   transform: translateY(-3px) scale(1.02);
 }
@@ -1019,7 +1150,7 @@ body {
 /* Menu pop-up di atas tombol */
 .cs-menu {
   margin-bottom: 12px;
-  background: white;
+  background: rgba(134, 160, 191, 0.6);
   border-radius: 12px;
   box-shadow: 0 10px 25px rgba(0,0,0,0.15);
   padding: 8px;
@@ -1031,7 +1162,7 @@ body {
   transform: translateY(10px);
   transition: all 0.3s ease;
   min-width: 150px;
-  border: 1px solid #e2e8f0;
+  border: 2px solid #e2e8f0;
 }
 
 .cs-menu.open {
@@ -1042,20 +1173,21 @@ body {
 
 .cs-item {
   text-decoration: none;
-  color: #334155;
+  color: #06202d;
   font-size: 0.85rem;
   padding: 10px 16px;
-  border-radius: 8px;
-  transition: background 0.2s;
+  border-radius: 16px;
+  transition: background 0.5s;
 }
 
 .cs-item:hover {
-  background: #f8fafc;
+  background: #187ba2;
+  color: #75a7ac;
 }
 
 .cs-item:hover { transform: scale(1.03); }
-.cs-item.wa    { background: #25D366; }
-.cs-item.email { background: var(--blu-cyan); }
+.cs-item.wa    { background: rgba(16, 202, 13, 0.3); }
+.cs-item.email { background: rgba(18, 75, 206, 0.3); }
 
 /* ─── EMPTY STATE ───────────────────────────────────────────── */
 .empty-state {
