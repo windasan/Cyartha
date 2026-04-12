@@ -1,0 +1,24 @@
+{
+  "name": "Cyartha x KKN KERI KERI",
+  "short_name": "Cyartha",
+  "description": "Aplikasi Pencatatan Keuangan dan Manajemen KKN",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#001E36",
+  "theme_color": "#001E36",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon/icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
