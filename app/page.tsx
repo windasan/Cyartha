@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
-import { createClient } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase'; // Pastikan path ini sesuai
 import { useRouter } from 'next/navigation';
+import { X, Eye, EyeOff } from 'lucide-react';
 
 export default function AuthPage() {
   const supabase = createClient();
@@ -11,6 +12,10 @@ export default function AuthPage() {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  
+  // State untuk menu bantuan (Customer Service)
+  const [csOpen, setCsOpen] = useState(false);
 
   // Form fields
   const [email, setEmail] = useState('');
@@ -18,91 +23,131 @@ export default function AuthPage() {
   const [nama, setNama] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  // Fungsi ganti tab untuk membersihkan form dan pesan notifikasi
+  const switchMode = (newMode: 'login' | 'register') => {
+    setMode(newMode);
+    setError('');
+    setSuccess('');
+    setPassword(''); // Reset password saat ganti tab untuk privasi
+  };
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setLoading(true);
+
+    // Validasi tambahan di sisi klien (Client-side validation)
+    if (mode === 'register' && password.length < 6) {
+      setError('Password harus memiliki minimal 6 karakter.');
+      setLoading(false);
+      return;
+    }
 
     try {
       if (mode === 'login') {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        router.push('/dashboard');
-        router.refresh();
+        const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+        if (loginError) throw loginError;
+        
+        setSuccess('🎉 Berhasil masuk! Mengalihkan ke Dashboard...');
+        
+        setTimeout(() => {
+          router.push('/dashboard');
+          router.refresh();
+        }, 1500);
+
       } else {
-        // Register
-
-        let avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(nama)}&background=random`;
-
-        if (avatarFile) {
-          // Pastikan ada bucket 'avatars' di Supabase Storage
-          const fileExt = avatarFile.name.split('.').pop();
-          const filePath = `${Date.now()}.${fileExt}`;
-          const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, avatarFile);
-          if (!uploadError) {
-            const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
-            avatarUrl = data.publicUrl;
-          }
-        }
-        const { data, error } = await supabase.auth.signUp({
+        const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: { full_name: nama },
-            emailRedirectTo: `${window.location.origin}/dashboard`,
+            // Mencegah error SSR dengan memastikan window tersedia
+            emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/dashboard`,
           },
         });
-        if (error) throw error;
+        if (signUpError) throw signUpError;
 
-        // Kalau email confirmation disabled (setting Supabase), langsung masuk
+        // Cek apakah butuh konfirmasi email (fitur Supabase) atau langsung masuk
         if (data.session) {
-          router.push('/dashboard');
-          router.refresh();
+          setSuccess('🚀 Akun berhasil dibuat! Langsung masuk...');
+          setTimeout(() => {
+            router.push('/dashboard');
+            router.refresh();
+          }, 1500);
         } else {
-          setError('✅ Cek email kamu untuk konfirmasi akun, lalu login.');
+          setSuccess('✉️ Berhasil! Silakan cek email kamu untuk konfirmasi akun.');
           setMode('login');
+          setPassword(''); // Kosongkan password setelah berhasil daftar
         }
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Terjadi kesalahan';
-      if (msg.includes('Invalid login credentials')) {
-        setError('Email atau password salah.');
-      } else if (msg.includes('User already registered')) {
-        setError('Email sudah terdaftar. Silakan login.');
-      } else {
-        setError(msg);
+      // Type casting error untuk Typescript yang lebih aman (menghindari 'any')
+      const errorObj = err as { message?: string };
+      let errorMessage = errorObj.message || 'Terjadi kesalahan sistem yang tidak diketahui.';
+
+      // Translasi pesan error umum dari Supabase ke Bahasa Indonesia
+      if (errorMessage.includes('Invalid login credentials')) {
+        errorMessage = 'Email atau password yang kamu masukkan salah.';
+      } else if (errorMessage.includes('Email not confirmed')) {
+        errorMessage = 'Silakan konfirmasi email kamu terlebih dahulu. Cek kotak masuk atau folder spam.';
+      } else if (errorMessage.includes('User already registered')) {
+        errorMessage = 'Email ini sudah terdaftar. Silakan masuk atau gunakan email lain.';
+      } else if (errorMessage.includes('Password should be at least')) {
+        errorMessage = 'Password terlalu pendek. Gunakan minimal 6 karakter.';
       }
+
+      setError(errorMessage);
     } finally {
+      // Finally memastikan loading berhenti, entah itu sukses atau error
       setLoading(false);
     }
   }
 
   async function handleGoogleLogin() {
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        queryParams: { prompt: 'select_account' },
-      },
-    });
-    if (error) {
-      setError(error.message);
+    setError('');
+    
+    try {
+      const { error: googleError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`,
+          queryParams: { prompt: 'select_account' },
+        },
+      });
+      
+      if (googleError) throw googleError;
+    } catch (err: unknown) {
+      const errorObj = err as { message?: string };
+      setError(errorObj.message || 'Gagal masuk menggunakan Google.');
       setLoading(false);
     }
   }
 
-// Fungsi reset password
-async function handleResetPassword() {
-  if (!email) return setError('Masukkan email untuk mereset password.');
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/reset-password`,
-  });
-  if (error) setError(error.message);
-  else setError('✅ Cek email untuk instruksi reset password.');
-}
+  async function handleResetPassword() {
+    if (!email) {
+      return setError('Silakan masukkan email kamu terlebih dahulu di kolom email atas.');
+    }
+    
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/reset-password`,
+      });
+      
+      if (resetError) throw resetError;
+      setSuccess('✅ Instruksi reset password sudah dikirim ke email kamu. Cek folder Inbox/Spam.');
+    } catch (err: unknown) {
+      const errorObj = err as { message?: string };
+      setError(errorObj.message || 'Gagal mengirim instruksi reset password.');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="auth-page">
@@ -115,86 +160,146 @@ async function handleResetPassword() {
           <div className="tagline">Manajemen Keuangan KKN</div>
         </div>
 
+        {/* TOMBOL BANTUAN MELAYANG */}
+        <div className="cs-container-floating">
+          <div className={`cs-menu ${csOpen ? 'open' : ''}`}>
+            {/* Tambahkan rel="noopener noreferrer" pada target blank untuk keamanan */}
+            <a href="https://wa.me/6285643312905" target="_blank" rel="noopener noreferrer" className="cs-item wa">
+              WhatsApp
+            </a>
+            <a href="mailto:cyborged30s@gmail.com" className="cs-item email">
+              Email
+            </a>
+          </div>
+
+          <button 
+            type="button" 
+            className="cs-main-btn" 
+            onClick={() => setCsOpen(!csOpen)}
+            aria-label="Bantuan Customer Service"
+          >
+            {csOpen ? <X size={20} /> : <span className="cs-text">Butuh bantuan?</span>}
+          </button>
+        </div>
+
         <div className="auth-tab-row">
           <button
-            className={`auth-tab${mode === 'login' ? ' active' : ''}`}
-            onClick={() => { setMode('login'); setError(''); }}
-          >Masuk</button>
+            type="button"
+            className={`auth-tab ${mode === 'login' ? 'active' : ''}`}
+            onClick={() => switchMode('login')}
+            disabled={loading} // Cegah klik ganti tab saat sedang proses loading
+          >
+            Masuk
+          </button>
           <button
-            className={`auth-tab${mode === 'register' ? ' active' : ''}`}
-            onClick={() => { setMode('register'); setError(''); }}
-          >Daftar</button>
+            type="button"
+            className={`auth-tab ${mode === 'register' ? 'active' : ''}`}
+            onClick={() => switchMode('register')}
+            disabled={loading}
+          >
+            Daftar
+          </button>
         </div>
+
+        {/* Notifikasi Alert */}
+        {error && (
+          <div style={{ backgroundColor: '#fff5f5', color: '#e53e3e', padding: '12px', borderRadius: '8px', marginBottom: '15px', fontSize: '0.85rem', border: '1px solid #fed7d7', lineHeight: '1.4' }}>
+            ⚠️ {error}
+          </div>
+        )}
+        {success && (
+          <div style={{ backgroundColor: '#f0fff4', color: '#38a169', padding: '12px', borderRadius: '8px', marginBottom: '15px', fontSize: '0.85rem', border: '1px solid #c6f6d5', lineHeight: '1.4' }}>
+            {success}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           {mode === 'register' && (
             <div className="form-group">
-              <label>Nama Lengkap</label>
+              <label htmlFor="nama">Nama Lengkap</label>
               <input
+                id="nama"
                 type="text"
                 placeholder="Nama kamu..."
                 value={nama}
                 onChange={e => setNama(e.target.value)}
                 required
                 autoComplete="name"
+                disabled={loading} // Disable input saat loading
               />
             </div>
           )}
 
           <div className="form-group">
-            <label>Email</label>
+            <label htmlFor="email">Email</label>
             <input
+              id="email"
               type="email"
               placeholder="email@contoh.com"
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
               autoComplete="email"
+              disabled={loading}
             />
           </div>
 
-{/* // Di bagian render input password: */}
-<div className="form-group">
-  <label>Password</label>
-  <div style={{ position: 'relative' }}>
-    <input
-      type={showPassword ? 'text' : 'password'}
-      value={password}
-      onChange={(e) => setPassword(e.target.value)}
-      required
-    />
-    <button 
-      type="button"
-      onClick={() => setShowPassword(!showPassword)}
-      style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer' }}
-    >
-      {showPassword ? '👁️' : '👁️‍🗨️'}
-    </button>
-  </div>
-</div>
-{mode === 'login' && (
-  <div style={{ textAlign: 'right', marginTop: '-10px', marginBottom: '14px' }}>
-    <button type="button" onClick={handleResetPassword} style={{ fontSize: '0.8rem', color: 'var(--blu-cyan)', background: 'none', border: 'none', cursor: 'pointer' }}>
-      Lupa Password?
-    </button>
-  </div>
-)}
-          <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? <span className="spinner" /> : (mode === 'login' ? 'Masuk ke Cyartha' : 'Buat Akun')}
+          <div className="form-group">
+            <label htmlFor="password">Password</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={mode === 'register' ? 6 : undefined} // HTML5 Validation
+                style={{ width: '100%', paddingRight: '45px' }}
+                disabled={loading}
+              />
+              <button 
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
+                aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                disabled={loading}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+          </div>
+
+          {mode === 'login' && (
+            <div style={{ textAlign: 'right', marginTop: '-10px', marginBottom: '15px' }}>
+              <button 
+                type="button" 
+                onClick={handleResetPassword} 
+                style={{ fontSize: '0.8rem', color: '#00bcd4', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
+                disabled={loading}
+              >
+                Lupa Password?
+              </button>
+            </div>
+          )}
+
+          <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: '100%' }}>
+            {loading ? 'Memproses...' : (mode === 'login' ? 'Masuk ke Cyartha' : 'Buat Akun')}
           </button>
         </form>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-          <div style={{ flex: 1, height: 1, background: '#E2E8F0' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0', color: '#94a3b8', fontSize: '0.8rem' }}>
+          <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
           atau
-          <div style={{ flex: 1, height: 1, background: '#E2E8F0' }} />
+          <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
         </div>
 
         <button
+          type="button"
           className="btn btn-navy"
           onClick={handleGoogleLogin}
           disabled={loading}
-          style={{ gap: 10 }}
+          style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10 }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24">
             <path fill="#EA4335" d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115z"/>
@@ -205,7 +310,7 @@ async function handleResetPassword() {
           Masuk dengan Google
         </button>
 
-        <p style={{ textAlign: 'center', fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 20 }}>
+        <p style={{ textAlign: 'center', fontSize: '0.75rem', color: '#94a3b8', marginTop: 25 }}>
           Aplikasi ini digunakan untuk mencatat pahala hamba-hamba Allah.
         </p>
       </div>

@@ -980,61 +980,77 @@ body {
 }
 
 /* ─── CS BUTTON ─────────────────────────────────────────────── */
-.cs-container {
+/* Container melayang di pojok layar */
+.cs-container-floating {
   position: fixed;
-  bottom: 100px;
-  right: 20px;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end; /* Menu akan rata kanan */
   z-index: 999;
 }
 
 .cs-main-btn {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: var(--blu-navy);
+  width: fit-content;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%);
   color: white;
   border: none;
-  box-shadow: 0 4px 20px rgba(0,30,54,0.3);
+  border-radius: 50px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  justify-content: center;
-  transition: all 0.3s;
-  font-size: 1.2rem;
+  gap: 8px;
+  box-shadow: 0 4px 15px rgba(0, 151, 167, 0.4);
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.cs-main-btn:hover { transform: scale(1.1); }
+.cs-main-btn:hover {
+  transform: translateY(-3px) scale(1.02);
+}
 
+.cs-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Menu pop-up di atas tombol */
 .cs-menu {
-  position: absolute;
-  bottom: 65px;
-  right: 0;
+  margin-bottom: 12px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  padding: 8px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  width: 145px;
+  gap: 4px;
   opacity: 0;
-  transform: translateY(8px);
-  pointer-events: none;
-  transition: all 0.3s;
+  visibility: hidden;
+  transform: translateY(10px);
+  transition: all 0.3s ease;
+  min-width: 150px;
+  border: 1px solid #e2e8f0;
 }
 
 .cs-menu.open {
   opacity: 1;
+  visibility: visible;
   transform: translateY(0);
-  pointer-events: all;
 }
 
 .cs-item {
-  padding: 11px 16px;
-  border-radius: var(--radius-sm);
   text-decoration: none;
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: white;
-  text-align: center;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-  transition: transform 0.2s;
+  color: #334155;
+  font-size: 0.85rem;
+  padding: 10px 16px;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.cs-item:hover {
+  background: #f8fafc;
 }
 
 .cs-item:hover { transform: scale(1.03); }
