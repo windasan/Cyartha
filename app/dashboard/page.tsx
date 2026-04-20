@@ -729,11 +729,14 @@ export default function DashboardPage() {
 
       {/* ── HEADER ── */}
       <header className="top-header">
-        <div className="logo">
+        <header className="top-header">
+        {/* Ubah div menjadi a, lalu tambahkan href */}
+        <a href="https://cryed.cloud" className="logo" style={{ textDecoration: 'none', color: 'inherit' }}>
           <span>Cy</span>artha.
           <span style={{ fontSize: 18, fontWeight: '600', color: '#567fcb' }}> x </span>
           <span style={{ fontSize: 20, fontWeight: '800', color: '#b1a722' }}>Aldi Taher</span>
-        </div>
+        </a>
+
         <div className="header-right">
           {realtimeConnected && (
             <div className="realtime-badge">
