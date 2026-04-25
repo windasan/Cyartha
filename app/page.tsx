@@ -187,10 +187,10 @@ export default function AuthPage() {
       <div className="cs-container-floating">
         {csOpen && (
           <div className="cs-menu-content">
-            <a href="https://wa.me/628123456789" target="_blank" rel="noopener noreferrer" className="cs-item">
+            <a href="https://wa.me/628564331205" target="_blank" rel="noopener noreferrer" className="cs-item">
               <Phone size={18} /> <span>WhatsApp</span>
             </a>
-            <a href="mailto:support@cyartha.com" className="cs-item">
+            <a href="mailto:edwindasan57@gmail.com" className="cs-item">
               <Mail size={18} /> <span>Email Support</span>
             </a>
           </div>
